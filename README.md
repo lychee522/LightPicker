@@ -17,11 +17,11 @@
 
 ### 📤 上传界面
 
-![upload]({{https://github.com/user-attachments/assets/27adc465-1d59-4a0d-a60c-59b71aaf90d5}})
+![upload](https://github.com/user-attachments/assets/27adc465-1d59-4a0d-a60c-59b71aaf90d5)
 
 ### ⚙️ 系统配置
 
-![settings]({{https://github.com/user-attachments/assets/c7da26e2-b3b7-4821-8fbc-a22a82c24b84}})
+![settings](https://github.com/user-attachments/assets/c7da26e2-b3b7-4821-8fbc-a22a82c24b84)
 
 ---
 ## 🎯 核心特性 | Key Features
