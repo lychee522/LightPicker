@@ -107,4 +107,6 @@ docker run -d \
 * 🍴 Fork 使用
 * 📢 分享给更多人
 
+* [English Version](./readme_us.md)
+
 你的支持就是作者持续更新的最大动力！ 🚀
