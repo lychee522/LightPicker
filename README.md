@@ -13,7 +13,7 @@
 
 ### 📚 图库界面
 
-![gallery]({{https://github.com/user-attachments/assets/e29e99ac-7ac5-4773-ab59-eb1797357708}})
+![gallery](https://github.com/user-attachments/assets/e29e99ac-7ac5-4773-ab59-eb1797357708)
 
 ### 📤 上传界面
 
