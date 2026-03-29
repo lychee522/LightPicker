@@ -1,10 +1,3 @@
-## 📄 License
-
-MIT License
-
----
-
-# 🌍 README_US（复制到 README_US.md）
 
 ````md
 # ✨ LightPicker
