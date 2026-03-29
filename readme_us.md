@@ -73,3 +73,7 @@ docker run -d \
 * ⭐ Star
 * 🍴 Fork
 * 📢 Share
+
+* [中文说明](./README.md)
+
+* ## If this project helps you, please give it a ⭐ Star to support the development!
