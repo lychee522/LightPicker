@@ -6,7 +6,7 @@ services:
     container_name: picgo-lite
     restart: always
     ports:
-      - "8080:8080" # 左边是外网访问端口，右边是容器内端口，自己按需改
+      - "5894:5894" # 左边是外网访问端口，右边是容器内端口，自己按需改
     volumes:
       # 把服务器宿主机的 ./storage 目录挂载进容器，确保存图和数据库不丢失
       - ./storage:/app/storage
