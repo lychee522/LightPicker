@@ -73,7 +73,7 @@ docker run -d \
 
 ## 👨‍💻 创始人
 
-* Telegram：[@肖肖雨歇](https://t.me/)
+* Telegram：[@肖肖雨歇](https://t.me/x9426y9464)
 * GitHub：[lychee522](https://github.com/lychee522)
 
 ---
