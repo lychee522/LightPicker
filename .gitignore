@@ -1,0 +1,23 @@
+# @author 肖肖雨歇
+# 忽略编译后的二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+picgo-lite-linux-*
+picgo-lite-windows-*
+picgo-lite-darwin-*
+
+# 🌟 核心：忽略数据库和用户上传的图片 (极其重要，保护隐私！)
+/storage/data.db
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+# 忽略前端依赖和打包产物
+/web/node_modules/
+/web/dist/
+.DS_Store
+
+# 忽略环境配置
+.env
