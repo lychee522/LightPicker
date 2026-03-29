@@ -1,5 +1,3 @@
-
-````md
 # ✨ LightPicker
 
 > **Capture light. Keep it simple.**  
@@ -75,19 +73,3 @@ docker run -d \
 * ⭐ Star
 * 🍴 Fork
 * 📢 Share
-
-```
-
----
-
-## ✅ 使用说明
-
-把这三个占位符替换掉即可：
-
-- `{{DEMO_GALLERY_URL}}`
-- `{{DEMO_UPLOAD_URL}}`
-- `{{DEMO_SETTINGS_URL}}`
-
-直接粘你图床 URL 就能用了 👍
-
-```
