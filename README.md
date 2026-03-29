@@ -23,3 +23,28 @@
 只需在你的终端执行以下命令，脚本会自动识别你的系统架构（AMD64/ARM64）并完成下载、配置与后台运行：
 ```bash
 curl -fsSL [https://raw.githubusercontent.com/lychee522/LightPicker/main/install.sh](https://raw.githubusercontent.com/lychee522/LightPicker/main/install.sh) | bash
+
+### 方案 B：Docker 极速部署 (全平台通用)
+镜像已推送到 Docker Hub，包含环境仅 14MB，极其省资源。
+
+Bash
+docker run -d \
+  --name lightpicker \
+  -p 5894:5894 \
+  -v $(pwd)/storage:/app/storage \
+  --restart always \
+  lycheexiaoxiao/lightpicker:latest
+
+### 方案 C：全系统独立二进制部署 (Windows / macOS)
+如果您不想使用任何命令行工具，我们为您准备了开箱即用的二进制文件：
+
+前往 Releases 页面下载对应您系统的版本。
+
+在程序同级目录下创建 storage/uploads 文件夹。
+
+双击运行 picgo-lite-xxx。
+
+浏览器访问 http://127.0.0.1:5894 即可使用。
+
+👨‍💻 创始人
+TG 账号：@肖肖雨歇
