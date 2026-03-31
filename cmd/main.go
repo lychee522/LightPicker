@@ -59,7 +59,7 @@ type ImportRequest struct {
 
 // 🌟 全局 OTA 控制变量
 var (
-	currentAppVersion      = "v1.2.0"
+	currentAppVersion      = "v1.2.2"
 	latestUpdateInfo       UpdateInfo
 	updateStatusMutex      sync.RWMutex
 	globalUpgradeStatus    = "idle" // idle, downloading, ready_to_restart

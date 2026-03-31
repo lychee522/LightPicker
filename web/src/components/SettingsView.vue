@@ -166,7 +166,7 @@ const whitelistArray = ref([])
 const host = window.location.origin
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('picgo_token')}` } })
 
-const currentLocalVersion = ref('v1.2.0') 
+const currentLocalVersion = ref('v1.2.2') 
 const updateStatus = ref('idle') 
 const upgradeProgress = ref(0)
 const isChecking = ref(false)
