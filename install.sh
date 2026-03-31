@@ -1,6 +1,6 @@
 #!/bin/bash
 # @author 肖肖雨歇 (tg: @肖肖雨歇)
-# ✨ 拾光图床 (LightPicker) Linux 一键极速部署脚本 (全网通杀版)
+# ✨ 拾光图床 (LightPicker) Linux 一键极速部署脚本 (多节点自动故障转移版)
 
 echo "================================================="
 echo "   ✨ 欢迎使用 拾光图床 (LightPicker) 一键部署"
@@ -22,18 +22,52 @@ echo "📁 正在准备运行环境..."
 mkdir -p ~/lightpicker/storage/uploads
 cd ~/lightpicker || exit
 
-# 3. 从 GitHub 获取最新版下载地址 (加入加速魔法)
-echo "📥 正在通过加速通道下载核心组件: $FILE_NAME ..."
+# 3. 核心下载逻辑：多节点自动切换
+echo "📥 正在获取核心组件: $FILE_NAME ..."
 
-# 定义 GitHub 加速代理前缀 (如果这个失效，可以换成 https://ghp.ci/ 等其他公共代理)
-GH_PROXY="https://mirror.ghproxy.com/"
-# 拼接成最终的加速下载链接
-DOWNLOAD_URL="${GH_PROXY}https://github.com/lychee522/LightPicker/releases/latest/download/${FILE_NAME}"
+# 基础下载直链
+RAW_URL="https://github.com/lychee522/LightPicker/releases/latest/download/${FILE_NAME}"
 
-curl -L -o picgo-lite "$DOWNLOAD_URL"
+# 定义多个真实可用的加速节点池，最后一个留空代表使用官方直连
+PROXIES=(
+    "https://ghp.ci/"
+    "https://github.moeyy.xyz/"
+    "https://fastgh.oso.gs/"
+    "https://mirror.ghproxy.com/"
+    "" 
+)
 
-if [ ! -s picgo-lite ]; then
-    echo "❌ 下载失败，请检查网络或代理接口状态"
+DOWNLOAD_SUCCESS=0
+
+# 遍历尝试所有节点
+for PROXY in "${PROXIES[@]}"; do
+    if [ -z "$PROXY" ]; then
+        echo "🔄 尝试直连 GitHub 官方源下载..."
+        DOWNLOAD_URL="$RAW_URL"
+    else
+        echo "🔄 尝试使用加速节点下载: $PROXY ..."
+        DOWNLOAD_URL="${PROXY}${RAW_URL}"
+    fi
+
+    # 使用 curl 下载:
+    # --connect-timeout 10 : 10秒连不上直接放弃换下一个
+    # -m 180 : 最多允许下载 3 分钟，防止龟速卡死
+    curl -L --connect-timeout 10 -m 180 -o picgo-lite "$DOWNLOAD_URL"
+
+    # 检查文件是否下载成功且大小不为0
+    if [ -s picgo-lite ]; then
+        echo "✅ 下载成功！"
+        DOWNLOAD_SUCCESS=1
+        break
+    else
+        echo "⚠️ 当前节点不可用或超时，正在清理残缺文件，准备切换下一个..."
+        rm -f picgo-lite 
+    fi
+done
+
+if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
+    echo "❌ 所有下载节点均已失效或超时！"
+    echo "建议：检查服务器网络，或尝试手动下载核心组件并放入 ~/lightpicker 目录。"
     exit 1
 fi
 
