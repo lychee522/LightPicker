@@ -1,11 +1,15 @@
 package main
 
 // @author tg账号的肖肖雨歇
-// @description 极简图床完全体：彻底消灭 301 重定向死循环 + 硬盘大搜捕 + CLI 救援 + 1小时自动巡检 OTA 升级系统 + 进度实时追踪
+// @description 极简图床完全体：彻底消灭 301 重定向 + 硬盘大搜捕(带WebP灵魂解析与全量日志) + CLI 救援 + OTA
 
 import (
 	"encoding/json"
 	"fmt"
+	"image"        // 🌟 解析图片基础库
+	_ "image/gif"  // 🌟 注册 GIF 解码器
+	_ "image/jpeg" // 🌟 注册 JPEG 解码器
+	_ "image/png"  // 🌟 注册 PNG 解码器
 	"io"
 	"io/fs"
 	"log"
@@ -18,6 +22,9 @@ import (
 	"strings"
 	"sync" // 🌟 核心：用于多线程并发控制升级状态
 	"time"
+
+	_ "golang.org/x/image/bmp"  // 🌟 核心新增：注册 BMP 解码器防身
+	_ "golang.org/x/image/webp" // 🌟 核心救命稻草：注入 WebP 灵魂，专治不服！
 
 	"picgo-lite/internal/config"
 	"picgo-lite/internal/handler"
@@ -344,7 +351,7 @@ func handleStartUpgrade(c *gin.Context) {
 }
 
 // =====================================================================
-// 🌟 附加核心引擎：服务器硬盘大搜捕 (保留全部原始换行与逻辑)
+// 🌟 附加核心引擎：服务器硬盘大搜捕 (全量日志与高阶测量重构)
 // =====================================================================
 
 func handleFSList(c *gin.Context) {
@@ -379,7 +386,6 @@ func handleFSList(c *gin.Context) {
 			targetPath = "/"
 		}
 	} else {
-		// 🌟 核心修复 1：安全清理路径两端的空格，防呆设计
 		targetPath = strings.TrimSpace(targetPath)
 	}
 
@@ -389,7 +395,6 @@ func handleFSList(c *gin.Context) {
 		return
 	}
 
-	// 🌟 核心修复 2：初始化为空切片而不是 nil，防止当目录全为文件时返回 null 导致前端解析报错！
 	items := make([]map[string]interface{}, 0)
 
 	for _, entry := range entries {
@@ -433,7 +438,7 @@ func handleFSImport(c *gin.Context) {
 	}
 
 	validExts := map[string]bool{
-		".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
+		".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true, ".bmp": true,
 	}
 
 	successCount := 0
@@ -475,6 +480,24 @@ func handleFSImport(c *gin.Context) {
 			if info != nil {
 				fileSize = info.Size()
 			}
+
+			// 🌟 核心重构区：极客级诊断系统！不仅要量，还要大声喊出为什么失败！
+			imgWidth, imgHeight := 0, 0
+			imgFile, err := os.Open(destPath)
+			if err == nil {
+				imgConfig, format, decodeErr := image.DecodeConfig(imgFile)
+				if decodeErr == nil {
+					imgWidth = imgConfig.Width
+					imgHeight = imgConfig.Height
+					log.Printf("✅ 测距成功: [%s格式] 宽:%d 高:%d -> %s", format, imgWidth, imgHeight, d.Name())
+				} else {
+					log.Printf("❌ 测距失败: 文件 [%s] 无法解析格式，原因: %v", d.Name(), decodeErr)
+				}
+				imgFile.Close()
+			} else {
+				log.Printf("❌ 文件卡死: 无法打开文件 [%s] 进行测距，原因: %v", d.Name(), err)
+			}
+
 			albumID, _ := strconv.Atoi(req.Album)
 			safeStoragePath := "uploads/" + newFileName
 			newImage := model.Image{
@@ -483,9 +506,10 @@ func handleFSImport(c *gin.Context) {
 				MimeType:    mime.TypeByExtension(ext),
 				Size:        fileSize,
 				AlbumID:     uint(albumID),
+				Width:       imgWidth,  // 🌟 写入真实宽度
+				Height:      imgHeight, // 🌟 写入真实高度
 			}
 			config.DB.Create(&newImage)
-			log.Printf("成功导入并入库: %s", newFileName)
 			successCount++
 		} else {
 			failCount++
