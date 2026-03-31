@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# 忽略存储目录 (防隐私泄露)
+storage/uploads/
+storage/data.db*
+
+# 忽略临时沙盒文件
+temp*
+picgo_lite_update_temp
+
+# 忽略编译出的二进制主程序
+picgo-lite
+picgo-lite.exe
+picgo-lite-*.old
