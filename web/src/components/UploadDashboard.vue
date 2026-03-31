@@ -71,11 +71,17 @@
         </div>
 
         <div class="modal-footer">
-          <select v-model="scanStrategy" class="form-select strategy-select">
+          <select v-model="selectedAlbum" class="form-select strategy-select" style="max-width: 120px;" title="选择导入的目标相册">
+            <option value="0">📂 默认根目录</option>
+            <option v-for="album in albums" :key="album.id" :value="album.id">📁 {{ album.name }}</option>
+          </select>
+
+          <select v-model="scanStrategy" class="form-select strategy-select" style="max-width: 120px;" title="选择导入策略">
             <option value="copy">复制 (安全)</option>
             <option value="move">移动 (省空间)</option>
             <option value="link">软链接 (极客)</option>
           </select>
+
           <button @click="triggerServerScan" class="btn scan-btn" :disabled="isScanning">
             {{ isScanning ? '🚀 狂奔扫描中...' : '🚀 立即扫描当前目录' }}
           </button>
@@ -150,8 +156,15 @@ const loadServerDirs = async (path) => {
   serverScanPath.value = path
   try {
     const { data } = await axios.get(`/api/fs/list?path=${encodeURIComponent(path)}`, authHeader())
-    serverDirs.value = data.data || []
+    if (data.code === 200) {
+      serverDirs.value = data.data || []
+    } else {
+      window.$toast(data.msg || '读取目录失败', 'error')
+      serverDirs.value = []
+    }
   } catch (err) {
+    const errMsg = err.response?.data?.msg || '读取目录失败，请检查路径或权限'
+    window.$toast(errMsg, 'error')
     serverDirs.value = [] 
   }
 }
@@ -185,25 +198,20 @@ const triggerServerScan = async () => {
   const payload = {
     sourcePath: serverScanPath.value,
     strategy: scanStrategy.value,
-    album: selectedAlbum.value
+    // 🌟 核心修复：强制转为字符串，治好 Go 语言的强迫症
+    album: String(selectedAlbum.value) 
   }
 
   try {
     const { data } = await axios.post('/api/fs/import', payload, authHeader())
     
-    // 🌟 核心：不仅弹窗提示成功，还要实时刷新画廊，让用户立刻看到战果！
     alert(data.msg || '扫描并导入完成！') 
     
-    // 获取最新导入的图片列表并直接塞进顶部的展示区，拒绝盲等
     if (data.data && data.data.urls && data.data.urls.length > 0) {
       data.data.urls.forEach(url => {
-         // 处理斜杠确保拼接正确
          const prefix = url.startsWith('/') ? '' : '/'
          images.value.unshift({ url: window.location.origin + prefix + url })
       })
-    } else {
-        // 如果后端没返回具体的 URLs，为了防呆，直接刷新最新的图库前几张塞进去也行
-        // (注：这需要后端 /api/images 支持，如果你只在图库面板看，这里不刷新也没事)
     }
 
     showScanModal.value = false // 导入成功后自动关闭弹窗
@@ -258,7 +266,8 @@ const upload = async (file, width, height) => {
   fd.append('file', file)
   fd.append('width', width)
   fd.append('height', height)
-  fd.append('album_id', selectedAlbum.value)
+  // 🌟 这里也加上 String 保护一下，虽然正常网页传 FormData 都是字符串，但保险起见
+  fd.append('album_id', String(selectedAlbum.value))
 
   try {
     const { data } = await axios.post('/api/upload', fd, authHeader())

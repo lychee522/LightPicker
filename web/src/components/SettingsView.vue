@@ -65,11 +65,16 @@
                 <select v-model="cfg.domain" @change="saveConfigs" class="form-select"><option value="default">🌐 默认来源</option><option v-for="d in domains" :value="d">🚀 {{ d }}</option></select>
               </div>
               
-              <div style="display: flex; gap: 10px; align-items: center;">
+              <div style="display: flex; flex-direction: column; gap: 10px;">
                 <code class="api-link" @click="copy(getUrl(cfg))" title="点击直接复制链接" style="cursor: pointer; flex: 1; margin: 0; display: block; background: #282c34; color: #98c379; padding: 10px; border-radius: 6px; font-size: 12px; overflow-x: auto; white-space: nowrap; transition: 0.2s;">
                   {{ getUrl(cfg) }}
                 </code>
-                <button @click="copy(`![盲盒图](${getUrl(cfg)})`)" class="btn outline-btn small-btn" style="padding: 10px 15px;">📝 复制 MD</button>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button @click="copy(getUrl(cfg))" class="btn outline-btn small-btn">🔗 复制直链</button>
+                  <button @click="copy(`![盲盒图](${getUrl(cfg)})`)" class="btn outline-btn small-btn">📝 复制 MD</button>
+                  <button @click="copy(`[img]${getUrl(cfg)}[/img]`)" class="btn outline-btn small-btn">🅱️ BBCode</button>
+                  <button @click="copy(`<img src=\x22${getUrl(cfg)}\x22 alt=\x22盲盒图\x22 />`)" class="btn outline-btn small-btn">🌐 HTML</button>
+                </div>
               </div>
             </div>
           </div>
@@ -89,17 +94,19 @@
           <h3>LightPicker {{ currentLocalVersion }}</h3>
           
           <div class="update-section card-box" style="margin-bottom: 20px; background: rgba(16, 185, 129, 0.05);">
-            <div v-if="updateStatus === 'idle'">
+            <div v-if="updateStatus === 'idle'" style="display: flex; gap: 10px; justify-content: center;">
               <button @click="manualCheckUpdate" class="btn primary-btn" :disabled="isChecking">
                 {{ isChecking ? '🛰️ 正在巡检云端...' : '🔍 检查在线更新' }}
               </button>
+              <button @click="$refs.otaFileRef.click()" class="btn outline-btn">📤 手动上传升级包</button>
+              <input type="file" ref="otaFileRef" @change="handleOTAUpload" hidden />
             </div>
             <div v-else-if="updateStatus === 'found'" style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
               <span style="color: #10b981; font-weight: bold;">🎉 发现新版本 {{ remoteVersion }}！</span>
               <button @click="showModal = true" class="btn success-btn">🚀 查看更新详情</button>
             </div>
             <div v-else-if="updateStatus === 'upgrading'" style="width: 100%;">
-              <p style="margin-bottom: 10px;">⚡ 补丁拉取中: {{ upgradeProgress }}%</p>
+              <p style="margin-bottom: 10px;">⚡ 补丁拉取/刷入中: {{ upgradeProgress }}%</p>
               <div class="progress-bar-container">
                 <div class="progress-bar-fill animated" :style="{ width: upgradeProgress + '%' }"></div>
               </div>
@@ -141,12 +148,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue' // 🌟 补上 watch
 import axios from 'axios'
 const emit = defineEmits(['change-theme'])
 
-// --- 基础状态 ---
-const activeTab = ref('about')
+// 🌟 核心修复：优先从缓存读取标签页，没有再默认 about
+const activeTab = ref(sessionStorage.getItem('picgo_settings_tab') || 'about')
+
+// 🌟 核心修复：只要标签页一变，立刻存入缓存，F5 刷新再也不怕失忆！
+watch(activeTab, (newVal) => {
+  sessionStorage.setItem('picgo_settings_tab', newVal)
+})
 const currentTheme = ref(localStorage.getItem('app_theme') || 'fresh')
 const albums = ref([]); const configs = ref([]); 
 const domains = ref(JSON.parse(localStorage.getItem('picgo_domains') || '[]'))
@@ -154,9 +166,8 @@ const whitelistArray = ref([])
 const host = window.location.origin
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('picgo_token')}` } })
 
-// --- 🌟 OTA 升级核心状态 (修复比对逻辑) ---
-const currentLocalVersion = ref('v1.2.0') // 🌟 必须定义这个变量！
-const updateStatus = ref('idle') // idle, found, upgrading, ready_to_restart
+const currentLocalVersion = ref('v1.2.0') 
+const updateStatus = ref('idle') 
 const upgradeProgress = ref(0)
 const isChecking = ref(false)
 const showModal = ref(false)
@@ -164,8 +175,8 @@ const remoteVersion = ref('')
 const remoteChangelog = ref('')
 let checkTimer = null
 let progressTimer = null
+const otaFileRef = ref(null) 
 
-// 🌟 语义化版本比对：返回 true 代表 remote 更大
 const isNewer = (local, remote) => {
   const l = local.replace('v', '').split('.').map(Number)
   const r = remote.replace('v', '').split('.').map(Number)
@@ -178,13 +189,11 @@ const isNewer = (local, remote) => {
   return false
 }
 
-// --- 逻辑：巡检云端版本 ---
 const performUpdateCheck = async (isManual = false) => {
   if (isChecking.value) return
   isChecking.value = true
   try {
     const { data } = await axios.get('/api/system/update-check', authHeader())
-    // 🌟 只有后端说有新版本，且前端比对确实更大时才弹窗
     if (data.has_new && isNewer(currentLocalVersion.value, data.version)) {
       const skipped = localStorage.getItem('ota_skipped_version')
       if (data.version !== skipped || isManual) {
@@ -203,7 +212,6 @@ const performUpdateCheck = async (isManual = false) => {
   }
 }
 
-// --- 逻辑：一键立即更新 ---
 const startUpgradeProcess = async () => {
   showModal.value = false
   updateStatus.value = 'upgrading'
@@ -217,7 +225,6 @@ const startUpgradeProcess = async () => {
   }
 }
 
-// --- 逻辑：轮询进度 ---
 const startPollingProgress = () => {
   progressTimer = setInterval(async () => {
     try {
@@ -228,11 +235,39 @@ const startPollingProgress = () => {
         updateStatus.value = 'ready_to_restart'
         window.$toast('升级包下载完成，准备重启！', 'success')
       }
-    } catch (e) { /* 轮询容错 */ }
+    } catch (e) { }
   }, 1000)
 }
 
-// --- 逻辑：跳过此版本 ---
+const handleOTAUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (!confirm(`⚠️ 危险操作提示：\n确认使用 [ ${file.name} ] 强行覆盖当前系统核心吗？\n（上传同版本或任何版本包均可直接替换并自动重启）`)) {
+    if(otaFileRef.value) otaFileRef.value.value = ''
+    return
+  }
+
+  const fd = new FormData()
+  fd.append('file', file)
+
+  try {
+    window.$toast('🚀 正在强刷底层核心，期间请绝对不要关闭页面...', 'info')
+    updateStatus.value = 'upgrading'
+    upgradeProgress.value = 60 
+
+    await axios.post('/api/update', fd, authHeader())
+    
+    upgradeProgress.value = 100
+    updateStatus.value = 'ready_to_restart'
+    window.$toast('✅ 二进制升级包刷入成功，准备重启！', 'success')
+  } catch (err) {
+    window.$toast('❌ 升级失败: ' + (err.response?.data?.error || err.message), 'error')
+    updateStatus.value = 'idle'
+  } finally {
+    if(otaFileRef.value) otaFileRef.value.value = ''
+  }
+}
+
 const skipCurrentVersion = () => {
   localStorage.setItem('ota_skipped_version', remoteVersion.value)
   showModal.value = false
@@ -240,7 +275,6 @@ const skipCurrentVersion = () => {
   window.$toast('已跳过此版本', 'info')
 }
 
-// --- 逻辑：重启 ---
 const handleRestart = () => {
   if (confirm('确认重启服务？')) {
     window.$toast('重启中...', 'info')
@@ -250,7 +284,6 @@ const handleRestart = () => {
 
 const manualCheckUpdate = () => performUpdateCheck(true)
 
-// --- 基础功能逻辑 (全量保留) ---
 const selectTheme = (theme) => { currentTheme.value = theme; emit('change-theme', theme) }
 const loadAlbums = async () => { try { const {data} = await axios.get('/api/albums', authHeader()); albums.value = data.data } catch(e){} }
 const saveDomains = () => { localStorage.setItem('picgo_domains', JSON.stringify(domains.value)) }
@@ -282,7 +315,35 @@ const getUrl = (cfg) => {
 const saveConfigs = () => localStorage.setItem('picgo_api_configs', JSON.stringify(configs.value))
 const addConfig = () => { configs.value.unshift({ id: Date.now(), name: '新配置', album: '0', ori: 'all', domain: 'default' }); saveConfigs() }
 const removeConfig = (i) => { if(confirm('删?')) { configs.value.splice(i, 1); saveConfigs() } }
-const copy = text => { navigator.clipboard.writeText(text).then(() => { window.$toast('已复制', 'success') }) }
+
+// 🌟 核心保命修复：HTTP 降级复制功能 (document.execCommand)，拒绝无反应！
+const copy = (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      window.$toast('已复制', 'success')
+    }).catch(() => fallbackCopy(text))
+  } else {
+    fallbackCopy(text)
+  }
+}
+
+// HTTP 环境兼容方案
+const fallbackCopy = (text) => {
+  const input = document.createElement('textarea')
+  input.value = text
+  input.style.position = 'fixed'
+  input.style.left = '-9999px' // 藏在屏幕外，防止页面跳动
+  document.body.appendChild(input)
+  input.focus()
+  input.select()
+  try {
+    document.execCommand('copy')
+    window.$toast('已复制', 'success')
+  } catch (err) {
+    window.$toast('复制失败，请手动选择复制', 'error')
+  }
+  document.body.removeChild(input)
+}
 
 onMounted(() => {
   loadAlbums(); loadWhitelist();
@@ -298,7 +359,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 全量样式保留 */
 .settings-container { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: var(--shadow-sm); min-height: 500px;}
 .header { margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
 .desc { color: var(--text-desc); font-size: 14px; margin-bottom: 15px; }
@@ -331,7 +391,11 @@ onUnmounted(() => {
 .version-badge { background: #10b981; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
 .changelog-container { background: var(--bg-color); padding: 15px; border-radius: 8px; font-size: 14px; color: var(--text-desc); max-height: 150px; overflow-y: auto; line-height: 1.5; white-space: pre-wrap; }
 .modal-footer { display: flex; flex-direction: column; gap: 10px; }
-.btn { border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s; width: 100%; }
+
+.btn { border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+.small-btn { padding: 6px 12px; font-size: 13px; }
+.modal-footer .btn { width: 100%; padding: 12px; }
+
 .primary-btn { background: var(--accent-color); color: #fff; }
 .outline-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
 .ghost-btn { background: transparent; color: var(--text-desc); font-size: 13px; }

@@ -378,6 +378,9 @@ func handleFSList(c *gin.Context) {
 		} else {
 			targetPath = "/"
 		}
+	} else {
+		// 🌟 核心修复 1：安全清理路径两端的空格，防呆设计
+		targetPath = strings.TrimSpace(targetPath)
 	}
 
 	entries, err := os.ReadDir(targetPath)
@@ -386,7 +389,9 @@ func handleFSList(c *gin.Context) {
 		return
 	}
 
-	var items []map[string]interface{}
+	// 🌟 核心修复 2：初始化为空切片而不是 nil，防止当目录全为文件时返回 null 导致前端解析报错！
+	items := make([]map[string]interface{}, 0)
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
